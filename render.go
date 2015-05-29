@@ -41,7 +41,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"html/template"
-  "io"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -169,9 +169,16 @@ func RendererBin(asset func(string) ([]byte, error), assetNames []string, option
 	opt := prepareOptions(options)
 	cs := prepareCharset(opt.Charset)
 	t := compileBin(asset, assetNames, opt)
+	bufpool = bpool.NewBufferPool(64)
 	return func(res http.ResponseWriter, req *http.Request, c martini.Context) {
-		// use a clone of the initial template
-		tc, _ := t.Clone()
+		var tc *template.Template
+		if martini.Env == martini.Dev {
+			// recompile for easy development
+			tc = compileBin(asset, assetNames, opt)
+		} else {
+			// use a clone of the initial template
+			tc, _ = t.Clone()
+		}
 		c.MapTo(&renderer{res, req, tc, opt, cs}, (*Render)(nil))
 	}
 }
